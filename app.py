@@ -3,6 +3,7 @@ import requests
 import re
 import json
 import time
+import urllib.parse
 import pandas as pd
 from pydantic import BaseModel, Field
 from typing import List
@@ -10,59 +11,77 @@ from ddgs import DDGS
 from google import genai
 from google.genai import types
 
-st.set_page_config(page_title="LogosGTM V2.0: Behavioral & GTM Intelligence Engine", layout="wide")
-st.title("⚡ LogosGTM V2.0: Autonomous Cross-Border GTM & Behavioral Game-Theory Engine")
-st.caption("6-Layer Deep Web Recon • Deterministic Compliance & Pricing Telemetry • Buying-Committee Game Theory • Autonomous LinkedIn Lead Hunter")
+st.set_page_config(page_title="LogosGTM V3.0: Game-Theoretic GTM Engine", layout="wide")
+st.title("⚡ LogosGTM V3.0: Autonomous Behavioral Game-Theory & Intent Engine")
+st.caption("7-Layer Deep Web & Hiring-Intent Recon • Nash Equilibrium Pricing Math • Adversarial CFO Wargame • Instant Localized Landing Page Re-Architect")
 
 # --- 1. STRICT PYDANTIC SCHEMAS ---
 class PsychScores(BaseModel):
-    trust_alignment: int = Field(description="0-100 score: Enterprise & buyer trust readiness in target market")
-    habit_friction_score: int = Field(description="0-100 score: Ease of switching from incumbent workflows (higher = easier)")
-    price_elasticity_fit: int = Field(description="0-100 score: Pricing & unit-economics alignment with local ROI benchmarks")
-    status_signaling_value: int = Field(description="0-100 score: Brand prestige & career-signaling value for the internal champion")
+    trust_alignment: int = Field(description="0-100 score: Enterprise trust readiness")
+    habit_friction_score: int = Field(description="0-100 score: Ease of switching from current habits (higher = easier)")
+    price_elasticity_fit: int = Field(description="0-100 score: Pricing fit against local human labor/incumbents")
+    status_signaling_value: int = Field(description="0-100 score: Career prestige value for the buyer champion")
 
 class PsychPersonaNode(BaseModel):
-    persona_role: str = Field(description="e.g., The CFO (Loss Aversion), The End-User (Habit Inertia), The Security Gatekeeper, The Champion")
-    cognitive_bias_triggered: str = Field(description="Exact psychological bias triggered (e.g., Status Quo Bias, Ambiguity Effect, Social Proof Deficit)")
-    internal_monologue: str = Field(description="Brutally honest 25-word internal thought blocking or driving the purchase")
-    veto_power_score: int = Field(description="0-100 probability this stakeholder kills the deal")
-    counter_move: str = Field(description="Exact 15-word product or sales counter-move to neutralize their veto")
+    persona_role: str = Field(description="e.g., The CFO (Loss Aversion), The End-User (Habit Inertia), The CISO, The Champion")
+    cognitive_bias_triggered: str = Field(description="Exact psychological bias triggered")
+    internal_monologue: str = Field(description="Brutally honest 20-word internal thought blocking the deal")
+    veto_power_score: int = Field(description="0-100 probability this stakeholder blocks the deal")
+    counter_move: str = Field(description="Exact 15-word tactical counter-move")
+
+class WargameTurn(BaseModel):
+    round_number: int = Field(description="Round 1 (Price/Intern Objection), Round 2 (Trust/Migration Trap), Round 3 (The Closing Wedge)")
+    skeptical_buyer_attack: str = Field(description="Brutal, realistic objection thrown by the local CFO/VP")
+    winning_founder_response: str = Field(description="Exact high-status, psychologically calibrated response that wins the round")
+    psychological_principle_used: str = Field(description="e.g., Loss Framing, Risk Reversal, Anchoring")
+
+class LocalizedLandingPage(BaseModel):
+    current_weakness: str = Field(description="Why their current homepage hero copy fails in this corridor")
+    rewritten_hero_headline: str = Field(description="High-converting localized H1 headline tailored to local buyer psychology")
+    rewritten_subheadline: str = Field(description="Concrete, metric-driven subheadline addressing local compliance/ROI")
+    localized_cta_button: str = Field(description="Frictionless CTA button text (e.g., 'Run Free WhatsApp Pilot' vs 'Book Demo')")
+    killer_trust_banner: str = Field(description="Exact social proof / compliance bar needed above the fold")
 
 class CompetitorBattlecard(BaseModel):
-    incumbent_name: str = Field(description="Real named competitor or workflow substitute in the target market")
-    their_pricing_model: str = Field(description="Their approximate pricing & packaging")
-    psychological_moat: str = Field(description="Why buyers default to them despite inferior tech")
-    wedge_to_steal_share: str = Field(description="Exact angle to displace them in 30 days")
+    incumbent_name: str = Field(description="Real named local competitor or manual workflow substitute")
+    their_pricing_model: str = Field(description="Approximate pricing")
+    psychological_moat: str = Field(description="Why buyers stick with them")
+    wedge_to_steal_share: str = Field(description="Exact 30-day displacement wedge")
 
 class TargetAccountLead(BaseModel):
-    company_name: str = Field(description="Real, named high-fit target company in the target market")
-    hq_city: str = Field(description="City HQ (e.g., Bengaluru, Mumbai, San Francisco, New York)")
-    ideal_buyer_title: str = Field(description="Exact decision-maker title to contact (e.g., VP Engineering, Head of RevOps)")
-    why_they_buy_now: str = Field(description="Specific operational trigger making them a high-intent buyer")
-    bias_matched_dm: str = Field(description="Ready-to-send 35-word LinkedIn/WhatsApp cold pitch using behavioral psychology")
+    company_name: str = Field(description="Real, named high-fit company in the target market")
+    hq_city: str = Field(description="City HQ")
+    ideal_buyer_title: str = Field(description="Exact decision-maker job title")
+    hiring_or_pain_trigger: str = Field(description="Specific operational or hiring signal making them need this right now")
+    bias_matched_dm: str = Field(description="Ready-to-send 35-word cold DM engineered around behavioral psychology")
 
 class ScalingPhase(BaseModel):
-    phase: str = Field(description="Phase 1 (Days 1-30 Wedge), Phase 2 (Days 31-90 Trust Engine), Phase 3 (Category Moat)")
-    strategic_move: str = Field(description="Concrete, non-obvious GTM or product mechanism")
+    phase: str = Field(description="Phase 1 (Days 1-30), Phase 2 (Days 31-90), Phase 3 (Scale Moat)")
+    strategic_move: str = Field(description="Concrete, non-obvious GTM mechanism")
     psychological_trigger_used: str = Field(description="Behavioral lever unlocked")
-    target_beachhead: str = Field(description="Exact micro-vertical or buyer cluster (e.g., Bengaluru GCCs, YC Seed Startups)")
+    target_beachhead: str = Field(description="Specific micro-vertical or buyer cluster")
 
-class BeastGTMReport(BaseModel):
+class FinalLimitGTMReport(BaseModel):
     brand_name: str
+    core_task_automated: str = Field(description="3-5 words describing the manual job this product replaces")
     verdict_badge: str = Field(description="Strictly: 'STRONG FIT (GO)', 'CONDITIONAL FIT (REQUIRES PIVOT)', or 'POOR FIT (NO-GO)'")
     overall_fit_score: int = Field(description="0-100 composite score")
-    unit_economics_arbitrage_test: str = Field(description="Brutal 30-word math comparison: Software price vs local human labor/incumbent alternatives & payment friction.")
-    executive_thesis: str = Field(description="40-word synthesis on whether this brand DNA fits the target corridor and the #1 bottleneck.")
-    recommended_pricing_architecture: str = Field(description="Exact localized pricing & packaging formula (e.g., Outcome-based, INR/UPI or US Enterprise Tier)")
+    estimated_current_monthly_usd_price: int = Field(description="Estimated monthly cost in USD for a small 10-person team (integer, e.g., 200)")
+    estimated_human_hours_saved_monthly: int = Field(description="Estimated human work hours saved per month for a team (integer, e.g., 80)")
+    unit_economics_arbitrage_test: str = Field(description="Brutal 30-word math comparison: Software price vs local human labor/incumbents.")
+    executive_thesis: str = Field(description="40-word synthesis on brand DNA fit and #1 bottleneck.")
+    recommended_pricing_architecture: str = Field(description="Exact localized pricing & packaging formula")
     psych_scores: PsychScores
     buying_committee_simulation: List[PsychPersonaNode]
+    adversarial_wargame_transcript: List[WargameTurn]
+    localized_landing_page_rewrite: LocalizedLandingPage
     competitor_battlecards: List[CompetitorBattlecard]
     ideal_scaling_blueprint: List[ScalingPhase]
     first_5_target_accounts: List[TargetAccountLead]
 
-# --- 2. DETERMINISTIC PYTHON TELEMETRY & 6-LAYER HARVESTER (0 LLM QUOTA) ---
+# --- 2. 7-LAYER RECON + HIRING INTENT MINER + REGEX TELEMETRY (0 LLM QUOTA) ---
 @st.cache_data(ttl=3600)
-def run_deep_recon_and_telemetry(raw_url: str, corridor: str) -> dict:
+def run_7_layer_recon(raw_url: str, corridor: str) -> dict:
     clean_url = raw_url.strip().rstrip("/")
     if not clean_url.startswith("http"):
         clean_url = "https://" + clean_url
@@ -73,32 +92,33 @@ def run_deep_recon_and_telemetry(raw_url: str, corridor: str) -> dict:
     for page_name, path in [("homepage", ""), ("pricing_page", "/pricing"), ("security_trust", "/security")]:
         try:
             r = requests.get(f"https://r.jina.ai/{clean_url}{path}", timeout=12)
-            harvest[page_name] = r.text[:3200] if r.status_code == 200 else "Page not found"
+            harvest[page_name] = r.text[:3000] if r.status_code == 200 else "Page not found"
         except Exception:
             harvest[page_name] = "Could not crawl path."
 
-    # Deterministic Python Regex Signal Extraction (No LLM Guessing)
     combined_raw = (harvest["homepage"] + " " + harvest["pricing_page"] + " " + harvest["security_trust"]).lower()
     telemetry = {
-        "SOC2 / ISO27001 Detected": bool(re.search(r"soc\s?2|iso\s?27001", combined_raw)),
-        "GDPR / DPDP Privacy Ready": bool(re.search(r"gdpr|dpdp|data residency|hipaa", combined_raw)),
-        "SSO / SAML Enterprise Auth": bool(re.search(r"\bsso\b|saml|okta", combined_raw)),
-        "Self-Serve Free Tier / Trial": bool(re.search(r"free trial|start for free|free plan|\$0", combined_raw)),
-        "API / Webhook Docs": bool(re.search(r"\bapi\b|webhook|sdk|documentation", combined_raw)),
-        "INR / PPP Pricing Mentioned": bool(re.search(r"₹|\binr\b|rupee|purchasing power", combined_raw)),
-        "Outcome / Usage Pricing": bool(re.search(r"per resolution|usage-based|pay as you go|credits|per call", combined_raw)),
+        "SOC2 / ISO27001": bool(re.search(r"soc\s?2|iso\s?27001", combined_raw)),
+        "GDPR / DPDP Ready": bool(re.search(r"gdpr|dpdp|data residency|hipaa", combined_raw)),
+        "SSO / SAML Auth": bool(re.search(r"\bsso\b|saml|okta", combined_raw)),
+        "Free Tier / Trial": bool(re.search(r"free trial|start for free|free plan|\$0", combined_raw)),
+        "API / Webhooks": bool(re.search(r"\bapi\b|webhook|sdk|documentation", combined_raw)),
+        "INR / PPP Pricing": bool(re.search(r"₹|\binr\b|rupee|purchasing power", combined_raw)),
+        "Outcome / Usage Pricing": bool(re.search(r"per resolution|usage-based|pay as you go|credits", combined_raw)),
     }
 
     region_code = "in-en" if "India" in corridor.split("→")[1] else "us-en"
+    target_geo = "India Bengaluru Mumbai" if region_code == "in-en" else "United States San Francisco New York"
     queries = {
-        "reddit_dark_funnel": f"site:reddit.com \"{brand_slug}\" OR \"{domain}\" review OR alternative OR expensive OR issue",
-        "g2_user_complaints": f"\"{domain}\" OR \"{brand_slug}\" reviews cons complaints pricing G2 TrustRadius",
-        "corridor_competitors": f"{brand_slug} competitors alternatives pricing {'India INR Zoho Freshworks' if region_code == 'in-en' else 'US enterprise G2 leader'}"
+        "reddit_dark_funnel": f"site:reddit.com \"{brand_slug}\" OR \"{domain}\" review OR alternative OR expensive",
+        "g2_user_complaints": f"\"{domain}\" OR \"{brand_slug}\" reviews cons complaints pricing G2",
+        "corridor_competitors": f"{brand_slug} competitors alternatives pricing {target_geo}",
+        "live_hiring_intent_signals": f"site:linkedin.com/jobs OR hiring {brand_slug} OR workflow automation {target_geo}"
     }
     ddgs = DDGS()
     for key, q in queries.items():
         try:
-            res = ddgs.text(q, region=region_code, max_results=5)
+            res = ddgs.text(q, region=region_code, max_results=4)
             harvest[key] = "\n".join([f"- {x.get('title')}: {x.get('body')}" for x in res]) if res else "No threads found."
         except Exception as e:
             harvest[key] = f"Search skipped: {e}"
@@ -108,7 +128,7 @@ def run_deep_recon_and_telemetry(raw_url: str, corridor: str) -> dict:
 # --- 3. GEMINI 3.8 FLASH FAILOVER ROUTER ---
 MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"]
 
-def execute_beast_simulation(client, prompt: str):
+def execute_final_limit_simulation(client, prompt: str):
     last_err = None
     for model_name in MODEL_CHAIN:
         try:
@@ -117,7 +137,7 @@ def execute_beast_simulation(client, prompt: str):
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=BeastGTMReport,
+                    response_schema=FinalLimitGTMReport,
                 )
             )
             return json.loads(res.text), model_name
@@ -129,9 +149,13 @@ def execute_beast_simulation(client, prompt: str):
             raise e
     raise RuntimeError(f"All free model buckets temporarily full. Last error: {last_err}")
 
-# --- 4. PRE-FIXED API KEY + QUOTA SHIELD + UI ---
+# --- 4. SESSION STATE & PRE-FIXED API KEY SHIELD ---
 if "scans_used" not in st.session_state:
     st.session_state.scans_used = 0
+if "last_report" not in st.session_state:
+    st.session_state.last_report = None
+if "last_recon" not in st.session_state:
+    st.session_state.last_recon = None
 
 prefixed_key = ""
 vip_code_secret = "YC2026"
@@ -148,7 +172,7 @@ with st.sidebar:
         ["Global Startup → Entering India 🇮🇳", "Indian Startup → Attacking US/Global 🇺🇸"]
     )
     free_left = max(0, 3 - st.session_state.scans_used)
-    st.metric("Free Instant Scans Remaining", f"{free_left} / 3")
+    st.metric("Free Instant Scans Left", f"{free_left} / 3")
     with st.expander("🔓 VIP Code / Custom API Key"):
         vip_input = st.text_input("Enter VIP Code (`YC2026`) or Gemini Key:", type="password")
 
@@ -176,9 +200,9 @@ if b3.button("Test Cardboard (YC W26)"):
 if b4.button("Test Cal.com"):
     st.session_state.target_url = "https://cal.com"
 
-target_url = st.text_input("Drop Any Startup URL for 6-Layer Deep Behavioral & GTM Recon:", value=st.session_state.target_url)
+target_url = st.text_input("Enter Any Startup URL for 7-Layer Recon & Game-Theory Simulation:", value=st.session_state.target_url)
 
-if st.button("Run Beast-Mode 6-Layer Simulation & Lead Hunter 🚀"):
+if st.button("Launch 7-Layer Simulation, Wargame & Intent Radar 🚀"):
     if not active_api_key:
         st.error("Add GEMINI_API_KEY to `.streamlit/secrets.toml` or paste your key in the sidebar.")
     elif not is_unlimited and st.session_state.scans_used >= 3:
@@ -188,28 +212,27 @@ if st.button("Run Beast-Mode 6-Layer Simulation & Lead Hunter 🚀"):
             st.session_state.scans_used += 1
 
         client = genai.Client(api_key=active_api_key)
-        with st.status("Executing 6-Layer Recon + Deterministic Telemetry + Buyer Discovery...", expanded=True) as status:
-            st.write("1️⃣ Crawling `/`, `/pricing`, & `/security` + running deterministic compliance regex...")
-            recon = run_deep_recon_and_telemetry(target_url, corridor)
+        with st.status("Executing 7-Layer Recon + Hiring Intent Miner + Wargame Engine...", expanded=True) as status:
+            st.write("1️⃣ Crawling `/`, `/pricing`, & `/security` + deterministic compliance regex...")
+            recon = run_7_layer_recon(target_url, corridor)
 
-            st.write(f"2️⃣ Running Behavioral Game-Theory Simulation for `{corridor}`...")
+            st.write(f"2️⃣ Running Behavioral Game-Theory & Wargame Simulation on `gemini-3.8-flash`...")
             prompt = f"""
-            You are an elite Behavioral Economist (Kahneman Prospect Theory, Cialdini Trust Mechanics) and Cross-Border Venture Architect.
+            You are an elite Behavioral Economist (Kahneman Prospect Theory, Cialdini Trust Mechanics, Nash Equilibrium Pricing) and Cross-Border Venture Architect.
             Analyze '{recon['domain']}' for the corridor: {corridor}.
-            
-            DETERMINISTIC PYTHON TELEMETRY SIGNALS:
-            {json.dumps(recon['telemetry'])}
 
+            DETERMINISTIC PYTHON TELEMETRY: {json.dumps(recon['telemetry'])}
             HOMEPAGE: {recon['harvest']['homepage']}
             PRICING PAGE: {recon['harvest']['pricing_page']}
-            SECURITY/TRUST PAGE: {recon['harvest']['security_trust']}
+            SECURITY PAGE: {recon['harvest']['security_trust']}
             REDDIT DARK FUNNEL: {recon['harvest']['reddit_dark_funnel']}
             G2 FRICTION: {recon['harvest']['g2_user_complaints']}
-            COMPETITOR LANDSCAPE: {recon['harvest']['corridor_competitors']}
+            COMPETITORS: {recon['harvest']['corridor_competitors']}
+            LIVE HIRING SIGNALS: {recon['harvest']['live_hiring_intent_signals']}
 
-            Be brutally honest, quantitative, and non-obvious. Name real companies, real local competitors, and exact psychological biases.
+            Be brutally honest, quantitative, and non-obvious. Name real companies, real local competitors, and simulate a realistic 3-round adversarial sales wargame.
             """
-            report, used_model = execute_beast_simulation(client, prompt)
+            report, used_model = execute_final_limit_simulation(client, prompt)
 
             st.write("3️⃣ Hunting live LinkedIn Decision-Maker URLs in Python (0 LLM quota)...")
             ddgs = DDGS()
@@ -217,71 +240,112 @@ if st.button("Run Beast-Mode 6-Layer Simulation & Lead Hunter 🚀"):
                 q = f"site:linkedin.com/in/ \"{lead['company_name']}\" \"{lead['ideal_buyer_title']}\" {lead['hq_city']}"
                 try:
                     hits = ddgs.text(q, region=recon["region"], max_results=1)
-                    lead["linkedin_url"] = hits[0]["href"] if hits else f"https://www.google.com/search?q={q.replace(' ', '+')}"
+                    lead["linkedin_url"] = hits[0]["href"] if hits else f"https://www.google.com/search?q={urllib.parse.quote(q)}"
                 except Exception:
-                    lead["linkedin_url"] = f"https://www.google.com/search?q={q.replace(' ', '+')}"
+                    lead["linkedin_url"] = f"https://www.google.com/search?q={urllib.parse.quote(q)}"
 
+            st.session_state.last_report = report
+            st.session_state.last_recon = recon
             status.update(label=f"Complete via `{used_model}`!", state="complete", expanded=False)
 
-        # --- 5. RENDER BEAST DASHBOARD ---
+# --- 5. RENDER INTERACTIVE DASHBOARD ---
+if st.session_state.last_report and st.session_state.last_recon:
+    report = st.session_state.last_report
+    recon = st.session_state.last_recon
+
+    st.divider()
+    c1, c2, c3 = st.columns([1.5, 1, 2.5])
+    c1.metric("Market Fit Verdict", report["verdict_badge"])
+    c2.metric("Overall Fit Score", f"{report['overall_fit_score']}/100")
+    c3.warning(f"**Unit-Economics & Labor Arbitrage Test:**\n{report['unit_economics_arbitrage_test']}")
+
+    st.info(f"**Executive Thesis:** {report['executive_thesis']}\n\n**Recommended Pricing Architecture:** {report['recommended_pricing_architecture']}")
+
+    st.markdown("##### 🔍 Deterministic Site Telemetry (Verified in Python)")
+    t_cols = st.columns(len(recon["telemetry"]))
+    for idx, (k, v) in enumerate(recon["telemetry"].items()):
+        t_cols[idx].metric(k, "✅ Yes" if v else "❌ Missing")
+
+    ps = report["psych_scores"]
+    s1, s2, s3, s4 = st.columns(4)
+    s1.metric("Trust Alignment", f"{ps['trust_alignment']}/100")
+    s2.metric("Habit Switch Ease", f"{ps['habit_friction_score']}/100")
+    s3.metric("Price Elasticity Fit", f"{ps['price_elasticity_fit']}/100")
+    s4.metric("Status Signaling Value", f"{ps['status_signaling_value']}/100")
+
+    t1, t2, t3, t4, t5, t6 = st.tabs([
+        "🎯 5 Verified Buyers + 1-Click Outreach",
+        "📐 Nash Equilibrium Pricing Simulator",
+        "🥊 3-Round CFO Wargame Simulator",
+        "🎨 Instant Localized Website Re-Architect",
+        "🧠 Buying Committee & Battlecards",
+        "🚀 3-Phase Scaling Playbook"
+    ])
+
+    with t1:
+        st.subheader("Autonomous Target Buyer Discovery & Intent Triggers")
+        leads_df = pd.DataFrame(report["first_5_target_accounts"])
+        st.dataframe(leads_df, use_container_width=True)
+        st.download_button(
+            "📥 Download 5 Verified Target Accounts + LinkedIn Links & DMs (CSV)",
+            data=leads_df.to_csv(index=False).encode("utf-8"),
+            file_name=f"{recon['brand']}_target_leads.csv",
+            mime="text/csv"
+        )
+
+    with t2:
+        st.subheader("📐 Discrete-Math Nash Equilibrium & Labor-Arbitrage Simulator (0 Extra Quota)")
+        st.caption(f"Task Automated: **{report['core_task_automated']}** | Adjust sliders to find the exact price where a local CFO switches from human labor to your software.")
+        col_a, col_b, col_c = st.columns(3)
+        proposed_price = col_a.slider("Your Proposed Monthly Team Price ($ USD)", 10, 2000, max(10, min(2000, int(report["estimated_current_monthly_usd_price"] or 250))))
+        hours_saved = col_b.slider("Human Hours Saved Per Month", 10, 500, max(10, min(500, int(report["estimated_human_hours_saved_monthly"] or 80))))
+        default_wage = 4 if recon["region"] == "in-en" else 35
+        local_hourly_wage = col_c.slider("Local Human Labor Cost ($/Hour)", 2, 100, default_wage)
+
+        human_labor_cost = hours_saved * local_hourly_wage
+        switching_friction_tax = 1.6  # Prospect Theory Loss Aversion multiplier (1.6x)
+        nash_indifference_price = round(human_labor_cost / switching_friction_tax, 2)
+        net_roi_multiple = round(human_labor_cost / max(1, proposed_price), 2)
+
+        m_a, m_b, m_c = st.columns(3)
+        m_a.metric("Cost of Local Human Alternative", f"${human_labor_cost}/mo (₹{human_labor_cost*84:,}/mo)")
+        m_b.metric("Nash Equilibrium Ceiling Price", f"${nash_indifference_price}/mo (₹{int(nash_indifference_price*84):,}/mo)")
+        m_c.metric("Buyer ROI Multiple", f"{net_roi_multiple}x", delta="Wins Deal ✅" if proposed_price <= nash_indifference_price else "CFO Vetoes Deal ❌")
+
+    with t3:
+        st.subheader("🥊 Adversarial 3-Round Negotiation Wargame (AI Closer vs. Skeptical Local CFO)")
+        for turn in report["adversarial_wargame_transcript"]:
+            with st.container(border=True):
+                st.markdown(f"**Round {turn['round_number']} — Psychological Principle: `{turn['psychological_principle_used']}`**")
+                st.error(f"**😤 Skeptical Buyer Attack:** \"{turn['skeptical_buyer_attack']}\"")
+                st.success(f"**⚡ Winning Founder Counter-Move:** \"{turn['winning_founder_response']}\"")
+
+    with t4:
+        st.subheader("🎨 Instant Localized Landing Page Re-Architect")
+        lp = report["localized_landing_page_rewrite"]
+        st.warning(f"**Why Current Homepage Fails in This Market:** {lp['current_weakness']}")
+        with st.container(border=True):
+            st.markdown(f"### {lp['rewritten_hero_headline']}")
+            st.markdown(f"*{lp['rewritten_subheadline']}*")
+            st.button(f"👉 {lp['localized_cta_button']}", key="preview_cta")
+            st.caption(f"🛡️ **Above-the-Fold Trust Bar:** {lp['killer_trust_banner']}")
+
+    with t5:
+        st.subheader("Adversarial Buying Committee Veto Map")
+        cols = st.columns(len(report["buying_committee_simulation"]))
+        for idx, node in enumerate(report["buying_committee_simulation"]):
+            with cols[idx]:
+                st.markdown(f"#### {node['persona_role']}")
+                st.caption(f"Bias: `{node['cognitive_bias_triggered']}`")
+                st.progress(min(max(node["veto_power_score"], 0), 100), text=f"Veto Risk: {node['veto_power_score']}%")
+                st.write(f"*\"{node['internal_monologue']}\"*")
+                st.success(f"**Fix:** {node['counter_move']}")
         st.divider()
-        c1, c2, c3 = st.columns([1.5, 1, 2.5])
-        c1.metric("Market Fit Verdict", report["verdict_badge"])
-        c2.metric("Overall Fit Score", f"{report['overall_fit_score']}/100")
-        c3.warning(f"**Unit-Economics & Labor Arbitrage Test:**\n{report['unit_economics_arbitrage_test']}")
+        st.subheader("⚔️ Local Competitor Psychological Battlecards")
+        st.dataframe(pd.DataFrame(report["competitor_battlecards"]), use_container_width=True)
 
-        st.info(f"**Executive Thesis:** {report['executive_thesis']}\n\n**Recommended Pricing Architecture:** {report['recommended_pricing_architecture']}")
-
-        # Deterministic Telemetry Bar
-        st.markdown("##### 🔍 Deterministic Site Telemetry (Detected in Python)")
-        t_cols = st.columns(len(recon["telemetry"]))
-        for idx, (k, v) in enumerate(recon["telemetry"].items()):
-            t_cols[idx].metric(k, "✅ Yes" if v else "❌ Missing")
-
-        ps = report["psych_scores"]
-        s1, s2, s3, s4 = st.columns(4)
-        s1.metric("Trust Alignment", f"{ps['trust_alignment']}/100")
-        s2.metric("Habit Switch Ease", f"{ps['habit_friction_score']}/100")
-        s3.metric("Price Elasticity Fit", f"{ps['price_elasticity_fit']}/100")
-        s4.metric("Status Signaling Value", f"{ps['status_signaling_value']}/100")
-
-        t1, t2, t3, t4, t5 = st.tabs([
-            "🎯 5 Verified Target Accounts + LinkedIn DMs",
-            "🧠 Buying Committee Game Theory",
-            "⚔️ Competitor Psychological Battlecards",
-            "🚀 3-Phase Scaling Playbook",
-            "🔎 Raw 6-Layer Scraped Evidence"
-        ])
-
-        with t1:
-            st.subheader("Autonomous Target Buyer Discovery & Bias-Matched Outreach")
-            leads_df = pd.DataFrame(report["first_5_target_accounts"])
-            st.dataframe(leads_df, use_container_width=True)
-            st.download_button(
-                "📥 Download 5 Target Accounts + LinkedIn URLs & DMs (CSV)",
-                data=leads_df.to_csv(index=False).encode("utf-8"),
-                file_name=f"{recon['brand']}_target_leads.csv",
-                mime="text/csv"
-            )
-
-        with t2:
-            cols = st.columns(len(report["buying_committee_simulation"]))
-            for idx, node in enumerate(report["buying_committee_simulation"]):
-                with cols[idx]:
-                    st.markdown(f"#### {node['persona_role']}")
-                    st.caption(f"Bias: `{node['cognitive_bias_triggered']}`")
-                    st.progress(min(max(node["veto_power_score"], 0), 100), text=f"Veto Risk: {node['veto_power_score']}%")
-                    st.write(f"*\"{node['internal_monologue']}\"*")
-                    st.success(f"**Counter-Move:** {node['counter_move']}")
-
-        with t3:
-            st.dataframe(pd.DataFrame(report["competitor_battlecards"]), use_container_width=True)
-
-        with t4:
-            for phase in report["ideal_scaling_blueprint"]:
-                with st.expander(f"📌 {phase['phase']} — Beachhead: {phase['target_beachhead']}", expanded=True):
-                    st.write(f"**Move:** {phase['strategic_move']}")
-                    st.caption(f"**Psychological Trigger:** `{phase['psychological_trigger_used']}`")
-
-        with t5:
-            st.json(recon["harvest"])
+    with t6:
+        for phase in report["ideal_scaling_blueprint"]:
+            with st.expander(f"📌 {phase['phase']} — Beachhead: {phase['target_beachhead']}", expanded=True):
+                st.write(f"**Move:** {phase['strategic_move']}")
+                st.caption(f"**Psychological Lever:** `{phase['psychological_trigger_used']}`")
