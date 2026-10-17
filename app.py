@@ -111,15 +111,62 @@ def run_behavioral_simulation(client, prompt: str):
             raise e
     raise RuntimeError(f"All free model buckets temporarily full. Last error: {last_err}")
 
-# --- 4. UI & EXECUTION ---
-api_key = st.sidebar.text_input("Google AI Studio API Key:", type="password")
-target_url = st.text_input("Enter Any Global Brand or Startup URL to Deep-Scan:", "https://linear.app")
+# --- 4. PRE-FIXED API KEY + QUOTA SHIELD + INSTANT UI ---
+if "scans_used" not in st.session_state:
+    st.session_state.scans_used = 0
+
+# Automatically pull your pre-fixed key from Streamlit Secrets
+prefixed_key = st.secrets.get("GEMINI_API_KEY", "")
+vip_code_secret = st.secrets.get("VIP_PASSCODE", "YC2026")
+
+with st.sidebar:
+    st.header("⚡ Instant Access Status")
+    free_left = max(0, 3 - st.session_state.scans_used)
+    st.metric("Free Instant Scans Remaining", f"{free_left} / 3")
+    st.caption("No API key required! Pre-configured with Gemini 3.8 Flash.")
+    
+    with st.expander("🔓 Unlimited VIP / Custom Key Access"):
+        vip_input = st.text_input("Enter Founder VIP Code (or your own Gemini Key):", type="password")
+
+# Determine which key to use automatically
+active_api_key = None
+is_unlimited = False
+
+if vip_input == vip_code_secret and prefixed_key:
+    active_api_key = prefixed_key
+    is_unlimited = True
+    st.sidebar.success("VIP Unlimited Mode Unlocked!")
+elif vip_input.startswith("AIza"):
+    active_api_key = vip_input
+    is_unlimited = True
+    st.sidebar.success("Using Custom API Key!")
+elif prefixed_key:
+    active_api_key = prefixed_key
+
+# Quick-Select Preset Buttons so Founders can test in 1 click without typing
+st.write("**Quick-Test a Global Startup in 1 Click (or type any URL below):**")
+b1, b2, b3 = st.columns(3)
+if "target_url" not in st.session_state:
+    st.session_state.target_url = "https://linear.app"
+if b1.button("Test Linear.app (Dev Tools)"):
+    st.session_state.target_url = "https://linear.app"
+if b2.button("Test Cal.com (Scheduling)"):
+    st.session_state.target_url = "https://cal.com"
+if b3.button("Test Superhuman.com (Email)"):
+    st.session_state.target_url = "https://superhuman.com"
+
+target_url = st.text_input("Enter Any Global Brand or Startup URL to Deep-Scan:", value=st.session_state.target_url)
 
 if st.button("Run Deep 5-Layer Scrape & Behavioral Fit Simulation 🧠"):
-    if not api_key:
-        st.error("Please enter your Google AI Studio API Key in the sidebar.")
+    if not active_api_key:
+        st.error("Admin setup note: Add GEMINI_API_KEY to `.streamlit/secrets.toml` or paste a key in the sidebar.")
+    elif not is_unlimited and st.session_state.scans_used >= 3:
+        st.warning("You've used your 3 free instant scans! DM the creator for the VIP code (`YC2026`) or paste your own key in the sidebar.")
     else:
-        client = genai.Client(api_key=api_key)
+        if not is_unlimited:
+            st.session_state.scans_used += 1
+
+        client = genai.Client(api_key=active_api_key)
         with st.status("Executing 5-Layer Deep Web Harvest (0 LLM Quota)...", expanded=True) as status:
             st.write("1️⃣ Crawling Live Homepage & `/pricing` architecture...")
             st.write("2️⃣ Mining Reddit Dark-Funnel & G2/Review customer friction...")
@@ -162,7 +209,6 @@ if st.button("Run Deep 5-Layer Scrape & Behavioral Fit Simulation 🧠"):
 
         st.info(f"**Executive Thesis:** {report['executive_thesis']}")
 
-        # Render the 4 Psychological Dimension Scores
         ps = report["psych_scores"]
         s1, s2, s3, s4 = st.columns(4)
         s1.metric("Trust Alignment", f"{ps['trust_alignment']}/100")
@@ -201,7 +247,7 @@ if st.button("Run Deep 5-Layer Scrape & Behavioral Fit Simulation 🧠"):
         with tab4:
             st.json(harvested["data"])
 
-# --- 6. EXPORTABLE 1-PAGE FOUNDER AUDIT BRIEF ---
+        # --- 6. EXPORTABLE 1-PAGE FOUNDER AUDIT BRIEF ---
         brief_md = f"""# 🧠 LogosGTM Behavioral Market-Fit Audit: {report['brand_name']}
 **Verdict:** {report['verdict_badge']} (Overall Fit Score: {report['overall_fit_score']}/100)
 **The 3-Interns & WhatsApp Test:** {report['the_3_interns_test']}
