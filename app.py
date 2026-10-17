@@ -200,3 +200,24 @@ if st.button("Run Deep 5-Layer Scrape & Behavioral Fit Simulation 🧠"):
 
         with tab4:
             st.json(harvested["data"])
+
+# --- 6. EXPORTABLE 1-PAGE FOUNDER AUDIT BRIEF ---
+        brief_md = f"""# 🧠 LogosGTM Behavioral Market-Fit Audit: {report['brand_name']}
+**Verdict:** {report['verdict_badge']} (Overall Fit Score: {report['overall_fit_score']}/100)
+**The 3-Interns & WhatsApp Test:** {report['the_3_interns_test']}
+**Executive Thesis:** {report['executive_thesis']}
+
+## Psychological Scores
+- Trust Alignment: {ps['trust_alignment']}/100 | Habit Switch Ease: {ps['habit_friction_score']}/100
+- Price Elasticity Fit: {ps['price_elasticity_fit']}/100 | Status Signaling: {ps['status_signaling_value']}/100
+
+## Phase 1 Recommended Wedge
+- **Beachhead:** {report['ideal_scaling_blueprint'][0]['target_beachhead']}
+- **Move:** {report['ideal_scaling_blueprint'][0]['strategic_move']}
+"""
+        st.download_button(
+            label="📥 Download 1-Page Founder Audit Brief (.md)",
+            data=brief_md.encode("utf-8"),
+            file_name=f"{harvested['brand']}_india_behavioral_audit.md",
+            mime="text/markdown"
+        )
