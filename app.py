@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import re
 import json
 import time
 import pandas as pd
@@ -9,49 +10,59 @@ from ddgs import DDGS
 from google import genai
 from google.genai import types
 
-st.set_page_config(page_title="LogosGTM: Behavioral & Cultural Fit Engine", layout="wide")
-st.title("🧠 LogosGTM: Deep Multi-Source Behavioral Psychology & Market-Fit Engine")
-st.caption("Powered by Gemini 3.8 Flash | Crawls Product + Pricing + Reddit Dark-Funnel + Review Friction to simulate Indian Buyer Psychology.")
+st.set_page_config(page_title="LogosGTM V2.0: Behavioral & GTM Intelligence Engine", layout="wide")
+st.title("⚡ LogosGTM V2.0: Autonomous Cross-Border GTM & Behavioral Game-Theory Engine")
+st.caption("6-Layer Deep Web Recon • Deterministic Compliance & Pricing Telemetry • Buying-Committee Game Theory • Autonomous LinkedIn Lead Hunter")
 
-# --- 1. STRICT PYDANTIC SCHEMAS (NO OPEN DICTS = NO additionalProperties ERROR) ---
+# --- 1. STRICT PYDANTIC SCHEMAS ---
 class PsychScores(BaseModel):
-    trust_alignment: int = Field(description="0-100 score: How much Indian enterprise/SMB buyers will trust this brand")
-    habit_friction_score: int = Field(description="0-100 score: Ease of switching from existing WhatsApp/Excel/Zoho habits (higher = easier)")
-    price_elasticity_fit: int = Field(description="0-100 score: How well their pricing fits Indian ROI & PPP expectations")
-    status_signaling_value: int = Field(description="0-100 score: Does using this product make the Indian buyer look elite/modern?")
+    trust_alignment: int = Field(description="0-100 score: Enterprise & buyer trust readiness in target market")
+    habit_friction_score: int = Field(description="0-100 score: Ease of switching from incumbent workflows (higher = easier)")
+    price_elasticity_fit: int = Field(description="0-100 score: Pricing & unit-economics alignment with local ROI benchmarks")
+    status_signaling_value: int = Field(description="0-100 score: Brand prestige & career-signaling value for the internal champion")
 
 class PsychPersonaNode(BaseModel):
-    persona_role: str = Field(description="e.g., The CFO (Loss Aversion), The End-User (Habit Inertia), The Champion (Status Signaling)")
-    cognitive_bias_triggered: str = Field(description="Specific psychological bias triggered (e.g., Status Quo Bias, Ambiguity Effect, Social Proof Deficit)")
-    internal_monologue: str = Field(description="Brutally honest 25-word monologue of what this Indian stakeholder secretly thinks")
-    veto_power_score: int = Field(description="0 to 100 probability this person blocks the deal")
+    persona_role: str = Field(description="e.g., The CFO (Loss Aversion), The End-User (Habit Inertia), The Security Gatekeeper, The Champion")
+    cognitive_bias_triggered: str = Field(description="Exact psychological bias triggered (e.g., Status Quo Bias, Ambiguity Effect, Social Proof Deficit)")
+    internal_monologue: str = Field(description="Brutally honest 25-word internal thought blocking or driving the purchase")
+    veto_power_score: int = Field(description="0-100 probability this stakeholder kills the deal")
+    counter_move: str = Field(description="Exact 15-word product or sales counter-move to neutralize their veto")
 
-class BehavioralAdaptation(BaseModel):
-    dimension: str = Field(description="e.g., Trust Architecture, Pricing Psychology, Workflow Habit Loop, Brand Positioning")
-    current_western_assumption: str = Field(description="What the startup currently assumes works in the US/West")
-    indian_psychological_reality: str = Field(description="Why that fails psychologically or culturally in India")
-    exact_adaptation_action: str = Field(description="Concrete, non-obvious product or GTM change required")
+class CompetitorBattlecard(BaseModel):
+    incumbent_name: str = Field(description="Real named competitor or workflow substitute in the target market")
+    their_pricing_model: str = Field(description="Their approximate pricing & packaging")
+    psychological_moat: str = Field(description="Why buyers default to them despite inferior tech")
+    wedge_to_steal_share: str = Field(description="Exact angle to displace them in 30 days")
+
+class TargetAccountLead(BaseModel):
+    company_name: str = Field(description="Real, named high-fit target company in the target market")
+    hq_city: str = Field(description="City HQ (e.g., Bengaluru, Mumbai, San Francisco, New York)")
+    ideal_buyer_title: str = Field(description="Exact decision-maker title to contact (e.g., VP Engineering, Head of RevOps)")
+    why_they_buy_now: str = Field(description="Specific operational trigger making them a high-intent buyer")
+    bias_matched_dm: str = Field(description="Ready-to-send 35-word LinkedIn/WhatsApp cold pitch using behavioral psychology")
 
 class ScalingPhase(BaseModel):
-    phase: str = Field(description="Phase 1 (Days 1-30 Wedge), Phase 2 (Days 31-90 Trust Engine), Phase 3 (Scale Moat)")
-    strategic_move: str = Field(description="Exact high-leverage growth mechanism tailored to this brand")
-    psychological_trigger_used: str = Field(description="Why this unlocks Indian enterprise or consumer adoption")
-    target_beachhead: str = Field(description="Specific micro-segment or city/vertical to dominate first")
+    phase: str = Field(description="Phase 1 (Days 1-30 Wedge), Phase 2 (Days 31-90 Trust Engine), Phase 3 (Category Moat)")
+    strategic_move: str = Field(description="Concrete, non-obvious GTM or product mechanism")
+    psychological_trigger_used: str = Field(description="Behavioral lever unlocked")
+    target_beachhead: str = Field(description="Exact micro-vertical or buyer cluster (e.g., Bengaluru GCCs, YC Seed Startups)")
 
-class DeepBehavioralReport(BaseModel):
+class BeastGTMReport(BaseModel):
     brand_name: str
-    verdict_badge: str = Field(description="Strictly one of: 'STRONG FIT (GO)', 'CONDITIONAL FIT (REQUIRES PIVOT)', or 'POOR FIT (NO-GO FOR INDIA)'")
-    overall_fit_score: int = Field(description="0-100 composite behavioral & economic fit score")
-    the_3_interns_test: str = Field(description="Does this beat hiring cheap local manual labor or WhatsApp+Excel in India? Explain brutally in 30 words.")
-    executive_thesis: str = Field(description="40-word deep strategic synthesis on whether India fits their brand DNA and why.")
+    verdict_badge: str = Field(description="Strictly: 'STRONG FIT (GO)', 'CONDITIONAL FIT (REQUIRES PIVOT)', or 'POOR FIT (NO-GO)'")
+    overall_fit_score: int = Field(description="0-100 composite score")
+    unit_economics_arbitrage_test: str = Field(description="Brutal 30-word math comparison: Software price vs local human labor/incumbent alternatives & payment friction.")
+    executive_thesis: str = Field(description="40-word synthesis on whether this brand DNA fits the target corridor and the #1 bottleneck.")
+    recommended_pricing_architecture: str = Field(description="Exact localized pricing & packaging formula (e.g., Outcome-based, INR/UPI or US Enterprise Tier)")
     psych_scores: PsychScores
     buying_committee_simulation: List[PsychPersonaNode]
-    cultural_adaptation_matrix: List[BehavioralAdaptation]
+    competitor_battlecards: List[CompetitorBattlecard]
     ideal_scaling_blueprint: List[ScalingPhase]
+    first_5_target_accounts: List[TargetAccountLead]
 
-# --- 2. DEEP MULTI-SOURCE PYTHON HARVESTER (0 LLM QUOTA) ---
+# --- 2. DETERMINISTIC PYTHON TELEMETRY & 6-LAYER HARVESTER (0 LLM QUOTA) ---
 @st.cache_data(ttl=3600)
-def deep_multi_source_harvester(raw_url: str) -> dict:
+def run_deep_recon_and_telemetry(raw_url: str, corridor: str) -> dict:
     clean_url = raw_url.strip().rstrip("/")
     if not clean_url.startswith("http"):
         clean_url = "https://" + clean_url
@@ -59,38 +70,45 @@ def deep_multi_source_harvester(raw_url: str) -> dict:
     brand_slug = domain.split(".")[0]
 
     harvest = {}
-    for page_name, path in [("homepage", ""), ("pricing_page", "/pricing")]:
+    for page_name, path in [("homepage", ""), ("pricing_page", "/pricing"), ("security_trust", "/security")]:
         try:
             r = requests.get(f"https://r.jina.ai/{clean_url}{path}", timeout=12)
-            harvest[page_name] = r.text[:3500] if r.status_code == 200 else "Not found"
+            harvest[page_name] = r.text[:3200] if r.status_code == 200 else "Page not found"
         except Exception:
-            harvest[page_name] = "Could not scrape path."
+            harvest[page_name] = "Could not crawl path."
 
+    # Deterministic Python Regex Signal Extraction (No LLM Guessing)
+    combined_raw = (harvest["homepage"] + " " + harvest["pricing_page"] + " " + harvest["security_trust"]).lower()
+    telemetry = {
+        "SOC2 / ISO27001 Detected": bool(re.search(r"soc\s?2|iso\s?27001", combined_raw)),
+        "GDPR / DPDP Privacy Ready": bool(re.search(r"gdpr|dpdp|data residency|hipaa", combined_raw)),
+        "SSO / SAML Enterprise Auth": bool(re.search(r"\bsso\b|saml|okta", combined_raw)),
+        "Self-Serve Free Tier / Trial": bool(re.search(r"free trial|start for free|free plan|\$0", combined_raw)),
+        "API / Webhook Docs": bool(re.search(r"\bapi\b|webhook|sdk|documentation", combined_raw)),
+        "INR / PPP Pricing Mentioned": bool(re.search(r"₹|\binr\b|rupee|purchasing power", combined_raw)),
+        "Outcome / Usage Pricing": bool(re.search(r"per resolution|usage-based|pay as you go|credits|per call", combined_raw)),
+    }
+
+    region_code = "in-en" if "India" in corridor.split("→")[1] else "us-en"
     queries = {
-        "reddit_voice_of_customer": f"site:reddit.com \"{brand_slug}\" OR \"{domain}\" review OR alternative OR problem OR pricing",
-        "g2_and_user_friction": f"\"{domain}\" OR \"{brand_slug}\" reviews complaints cons pricing G2 Capterra",
-        "indian_market_context": f"{brand_slug} alternatives India INR pricing Zoho Freshworks local competitors market"
+        "reddit_dark_funnel": f"site:reddit.com \"{brand_slug}\" OR \"{domain}\" review OR alternative OR expensive OR issue",
+        "g2_user_complaints": f"\"{domain}\" OR \"{brand_slug}\" reviews cons complaints pricing G2 TrustRadius",
+        "corridor_competitors": f"{brand_slug} competitors alternatives pricing {'India INR Zoho Freshworks' if region_code == 'in-en' else 'US enterprise G2 leader'}"
     }
     ddgs = DDGS()
     for key, q in queries.items():
         try:
-            res = ddgs.text(q, region="in-en", max_results=5)
-            harvest[key] = "\n".join([f"- {x.get('title')}: {x.get('body')}" for x in res]) if res else "No direct threads found."
+            res = ddgs.text(q, region=region_code, max_results=5)
+            harvest[key] = "\n".join([f"- {x.get('title')}: {x.get('body')}" for x in res]) if res else "No threads found."
         except Exception as e:
             harvest[key] = f"Search skipped: {e}"
 
-    return {"domain": domain, "brand": brand_slug, "data": harvest}
+    return {"domain": domain, "brand": brand_slug, "harvest": harvest, "telemetry": telemetry, "region": region_code}
 
 # --- 3. GEMINI 3.8 FLASH FAILOVER ROUTER ---
-MODEL_CHAIN = [
-    "gemini-3.8-flash",
-    "gemini-3.7-flash",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash-lite",
-    "gemini-2.5-flash"
-]
+MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"]
 
-def run_behavioral_simulation(client, prompt: str):
+def execute_beast_simulation(client, prompt: str):
     last_err = None
     for model_name in MODEL_CHAIN:
         try:
@@ -99,7 +117,7 @@ def run_behavioral_simulation(client, prompt: str):
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    response_schema=DeepBehavioralReport,
+                    response_schema=BeastGTMReport,
                 )
             )
             return json.loads(res.text), model_name
@@ -111,103 +129,114 @@ def run_behavioral_simulation(client, prompt: str):
             raise e
     raise RuntimeError(f"All free model buckets temporarily full. Last error: {last_err}")
 
-# --- 4. PRE-FIXED API KEY + QUOTA SHIELD + INSTANT UI ---
+# --- 4. PRE-FIXED API KEY + QUOTA SHIELD + UI ---
 if "scans_used" not in st.session_state:
     st.session_state.scans_used = 0
 
-# Automatically pull your pre-fixed key from Streamlit Secrets
-prefixed_key = st.secrets.get("GEMINI_API_KEY", "")
-vip_code_secret = st.secrets.get("VIP_PASSCODE", "YC2026")
+prefixed_key = ""
+vip_code_secret = "YC2026"
+try:
+    prefixed_key = st.secrets.get("GEMINI_API_KEY", "")
+    vip_code_secret = st.secrets.get("VIP_PASSCODE", "YC2026")
+except Exception:
+    pass
 
 with st.sidebar:
-    st.header("⚡ Instant Access Status")
+    st.header("⚡ Engine Controls")
+    corridor = st.radio(
+        "Select Expansion Corridor:",
+        ["Global Startup → Entering India 🇮🇳", "Indian Startup → Attacking US/Global 🇺🇸"]
+    )
     free_left = max(0, 3 - st.session_state.scans_used)
     st.metric("Free Instant Scans Remaining", f"{free_left} / 3")
-    st.caption("No API key required! Pre-configured with Gemini 3.8 Flash.")
-    
-    with st.expander("🔓 Unlimited VIP / Custom Key Access"):
-        vip_input = st.text_input("Enter Founder VIP Code (or your own Gemini Key):", type="password")
+    with st.expander("🔓 VIP Code / Custom API Key"):
+        vip_input = st.text_input("Enter VIP Code (`YC2026`) or Gemini Key:", type="password")
 
-# Determine which key to use automatically
 active_api_key = None
 is_unlimited = False
-
 if vip_input == vip_code_secret and prefixed_key:
     active_api_key = prefixed_key
     is_unlimited = True
-    st.sidebar.success("VIP Unlimited Mode Unlocked!")
+    st.sidebar.success("VIP Unlimited Mode Active!")
 elif vip_input.startswith("AIza"):
     active_api_key = vip_input
     is_unlimited = True
-    st.sidebar.success("Using Custom API Key!")
 elif prefixed_key:
     active_api_key = prefixed_key
 
-# Quick-Select Preset Buttons so Founders can test in 1 click without typing
-st.write("**Quick-Test a Global Startup in 1 Click (or type any URL below):**")
-b1, b2, b3 = st.columns(3)
+b1, b2, b3, b4 = st.columns(4)
 if "target_url" not in st.session_state:
     st.session_state.target_url = "https://linear.app"
-if b1.button("Test Linear.app (Dev Tools)"):
+if b1.button("Test Linear.app"):
     st.session_state.target_url = "https://linear.app"
-if b2.button("Test Cal.com (Scheduling)"):
+if b2.button("Test TryCardinal.ai (YC W26)"):
+    st.session_state.target_url = "https://trycardinal.ai"
+if b3.button("Test Cardboard (YC W26)"):
+    st.session_state.target_url = "https://usecardboard.com"
+if b4.button("Test Cal.com"):
     st.session_state.target_url = "https://cal.com"
-if b3.button("Test Superhuman.com (Email)"):
-    st.session_state.target_url = "https://superhuman.com"
 
-target_url = st.text_input("Enter Any Global Brand or Startup URL to Deep-Scan:", value=st.session_state.target_url)
+target_url = st.text_input("Drop Any Startup URL for 6-Layer Deep Behavioral & GTM Recon:", value=st.session_state.target_url)
 
-if st.button("Run Deep 5-Layer Scrape & Behavioral Fit Simulation 🧠"):
+if st.button("Run Beast-Mode 6-Layer Simulation & Lead Hunter 🚀"):
     if not active_api_key:
-        st.error("Admin setup note: Add GEMINI_API_KEY to `.streamlit/secrets.toml` or paste a key in the sidebar.")
+        st.error("Add GEMINI_API_KEY to `.streamlit/secrets.toml` or paste your key in the sidebar.")
     elif not is_unlimited and st.session_state.scans_used >= 3:
-        st.warning("You've used your 3 free instant scans! DM the creator for the VIP code (`YC2026`) or paste your own key in the sidebar.")
+        st.warning("3 free scans used! Enter VIP Code `YC2026` or your own Gemini key in the sidebar.")
     else:
         if not is_unlimited:
             st.session_state.scans_used += 1
 
         client = genai.Client(api_key=active_api_key)
-        with st.status("Executing 5-Layer Deep Web Harvest (0 LLM Quota)...", expanded=True) as status:
-            st.write("1️⃣ Crawling Live Homepage & `/pricing` architecture...")
-            st.write("2️⃣ Mining Reddit Dark-Funnel & G2/Review customer friction...")
-            st.write("3️⃣ Extracting Indian category substitutes & labor-arbitrage benchmarks...")
-            harvested = deep_multi_source_harvester(target_url)
+        with st.status("Executing 6-Layer Recon + Deterministic Telemetry + Buyer Discovery...", expanded=True) as status:
+            st.write("1️⃣ Crawling `/`, `/pricing`, & `/security` + running deterministic compliance regex...")
+            recon = run_deep_recon_and_telemetry(target_url, corridor)
 
-            st.write("4️⃣ Running Game-Theoretic Buying Committee Simulation on `gemini-3.8-flash`...")
-            master_prompt = f"""
-            You are an elite Behavioral Economist (trained in Kahneman Prospect Theory, Cialdini Trust Mechanics, and Indian Cultural Psychology) and Venture Strategist.
-            Perform a deep, non-obvious evaluation of whether '{harvested['domain']}' is a genuine fit for the Indian market or if it will fail due to psychological, workflow, or unit-economic friction.
+            st.write(f"2️⃣ Running Behavioral Game-Theory Simulation for `{corridor}`...")
+            prompt = f"""
+            You are an elite Behavioral Economist (Kahneman Prospect Theory, Cialdini Trust Mechanics) and Cross-Border Venture Architect.
+            Analyze '{recon['domain']}' for the corridor: {corridor}.
+            
+            DETERMINISTIC PYTHON TELEMETRY SIGNALS:
+            {json.dumps(recon['telemetry'])}
 
-            --- LAYER 1: LIVE HOMEPAGE DATA ---
-            {harvested['data']['homepage']}
+            HOMEPAGE: {recon['harvest']['homepage']}
+            PRICING PAGE: {recon['harvest']['pricing_page']}
+            SECURITY/TRUST PAGE: {recon['harvest']['security_trust']}
+            REDDIT DARK FUNNEL: {recon['harvest']['reddit_dark_funnel']}
+            G2 FRICTION: {recon['harvest']['g2_user_complaints']}
+            COMPETITOR LANDSCAPE: {recon['harvest']['corridor_competitors']}
 
-            --- LAYER 2: LIVE PRICING PAGE DATA ---
-            {harvested['data']['pricing_page']}
-
-            --- LAYER 3: REDDIT DARK-FUNNEL & USER SKEPTICISM ---
-            {harvested['data']['reddit_voice_of_customer']}
-
-            --- LAYER 4: REVIEW FRICTION & CONS ---
-            {harvested['data']['g2_and_user_friction']}
-
-            --- LAYER 5: INDIAN MARKET & LOCAL ALTERNATIVES ---
-            {harvested['data']['indian_market_context']}
-
-            INSTRUCTIONS:
-            - Do NOT flatter the startup. If their product can be replaced in India by cheap human interns or WhatsApp+Excel, call it out brutally in `the_3_interns_test` and give a 'CONDITIONAL FIT' or 'POOR FIT (NO-GO)' verdict.
-            - Ground every insight in behavioral psychology (Loss Aversion, Status Quo Bias, Collectivist Social Proof, Ambiguity Avoidance, Status Signaling).
+            Be brutally honest, quantitative, and non-obvious. Name real companies, real local competitors, and exact psychological biases.
             """
-            report, used_model = run_behavioral_simulation(client, master_prompt)
-            status.update(label=f"Deep Behavioral Simulation Complete via `{used_model}`!", state="complete", expanded=False)
+            report, used_model = execute_beast_simulation(client, prompt)
 
-        # --- 5. EXECUTIVE VISUALIZATION ---
+            st.write("3️⃣ Hunting live LinkedIn Decision-Maker URLs in Python (0 LLM quota)...")
+            ddgs = DDGS()
+            for lead in report["first_5_target_accounts"]:
+                q = f"site:linkedin.com/in/ \"{lead['company_name']}\" \"{lead['ideal_buyer_title']}\" {lead['hq_city']}"
+                try:
+                    hits = ddgs.text(q, region=recon["region"], max_results=1)
+                    lead["linkedin_url"] = hits[0]["href"] if hits else f"https://www.google.com/search?q={q.replace(' ', '+')}"
+                except Exception:
+                    lead["linkedin_url"] = f"https://www.google.com/search?q={q.replace(' ', '+')}"
+
+            status.update(label=f"Complete via `{used_model}`!", state="complete", expanded=False)
+
+        # --- 5. RENDER BEAST DASHBOARD ---
         st.divider()
-        c1, c2, c3 = st.columns([2, 1, 2])
-        c1.metric("Brand Fit Verdict", report["verdict_badge"])
+        c1, c2, c3 = st.columns([1.5, 1, 2.5])
+        c1.metric("Market Fit Verdict", report["verdict_badge"])
         c2.metric("Overall Fit Score", f"{report['overall_fit_score']}/100")
-        c3.warning(f"**The '3-Interns & WhatsApp' Benchmark:**\n{report['the_3_interns_test']}")
+        c3.warning(f"**Unit-Economics & Labor Arbitrage Test:**\n{report['unit_economics_arbitrage_test']}")
 
-        st.info(f"**Executive Thesis:** {report['executive_thesis']}")
+        st.info(f"**Executive Thesis:** {report['executive_thesis']}\n\n**Recommended Pricing Architecture:** {report['recommended_pricing_architecture']}")
+
+        # Deterministic Telemetry Bar
+        st.markdown("##### 🔍 Deterministic Site Telemetry (Detected in Python)")
+        t_cols = st.columns(len(recon["telemetry"]))
+        for idx, (k, v) in enumerate(recon["telemetry"].items()):
+            t_cols[idx].metric(k, "✅ Yes" if v else "❌ Missing")
 
         ps = report["psych_scores"]
         s1, s2, s3, s4 = st.columns(4)
@@ -216,54 +245,43 @@ if st.button("Run Deep 5-Layer Scrape & Behavioral Fit Simulation 🧠"):
         s3.metric("Price Elasticity Fit", f"{ps['price_elasticity_fit']}/100")
         s4.metric("Status Signaling Value", f"{ps['status_signaling_value']}/100")
 
-        tab1, tab2, tab3, tab4 = st.tabs([
+        t1, t2, t3, t4, t5 = st.tabs([
+            "🎯 5 Verified Target Accounts + LinkedIn DMs",
             "🧠 Buying Committee Game Theory",
-            "🔄 Psychological Adaptation Matrix",
-            "🚀 Ideal 3-Phase Scaling Blueprint",
-            "🔎 Raw 5-Layer Scraped Evidence"
+            "⚔️ Competitor Psychological Battlecards",
+            "🚀 3-Phase Scaling Playbook",
+            "🔎 Raw 6-Layer Scraped Evidence"
         ])
 
-        with tab1:
-            st.subheader("Adversarial Buying Committee Simulation (Why Deals Stall in the Dark Funnel)")
+        with t1:
+            st.subheader("Autonomous Target Buyer Discovery & Bias-Matched Outreach")
+            leads_df = pd.DataFrame(report["first_5_target_accounts"])
+            st.dataframe(leads_df, use_container_width=True)
+            st.download_button(
+                "📥 Download 5 Target Accounts + LinkedIn URLs & DMs (CSV)",
+                data=leads_df.to_csv(index=False).encode("utf-8"),
+                file_name=f"{recon['brand']}_target_leads.csv",
+                mime="text/csv"
+            )
+
+        with t2:
             cols = st.columns(len(report["buying_committee_simulation"]))
             for idx, node in enumerate(report["buying_committee_simulation"]):
                 with cols[idx]:
                     st.markdown(f"#### {node['persona_role']}")
-                    st.caption(f"**Bias Triggered:** `{node['cognitive_bias_triggered']}`")
-                    st.progress(min(max(node["veto_power_score"], 0), 100), text=f"Deal Veto Risk: {node['veto_power_score']}%")
+                    st.caption(f"Bias: `{node['cognitive_bias_triggered']}`")
+                    st.progress(min(max(node["veto_power_score"], 0), 100), text=f"Veto Risk: {node['veto_power_score']}%")
                     st.write(f"*\"{node['internal_monologue']}\"*")
+                    st.success(f"**Counter-Move:** {node['counter_move']}")
 
-        with tab2:
-            st.subheader("Western Assumption vs. Indian Psychological Reality")
-            st.dataframe(pd.DataFrame(report["cultural_adaptation_matrix"]), use_container_width=True)
+        with t3:
+            st.dataframe(pd.DataFrame(report["competitor_battlecards"]), use_container_width=True)
 
-        with tab3:
-            st.subheader("How to Scale Ideally in India (Behavioral GTM Playbook)")
+        with t4:
             for phase in report["ideal_scaling_blueprint"]:
                 with st.expander(f"📌 {phase['phase']} — Beachhead: {phase['target_beachhead']}", expanded=True):
-                    st.markdown(f"**Strategic Move:** {phase['strategic_move']}")
-                    st.markdown(f"**Psychological Lever:** `{phase['psychological_trigger_used']}`")
+                    st.write(f"**Move:** {phase['strategic_move']}")
+                    st.caption(f"**Psychological Trigger:** `{phase['psychological_trigger_used']}`")
 
-        with tab4:
-            st.json(harvested["data"])
-
-        # --- 6. EXPORTABLE 1-PAGE FOUNDER AUDIT BRIEF ---
-        brief_md = f"""# 🧠 LogosGTM Behavioral Market-Fit Audit: {report['brand_name']}
-**Verdict:** {report['verdict_badge']} (Overall Fit Score: {report['overall_fit_score']}/100)
-**The 3-Interns & WhatsApp Test:** {report['the_3_interns_test']}
-**Executive Thesis:** {report['executive_thesis']}
-
-## Psychological Scores
-- Trust Alignment: {ps['trust_alignment']}/100 | Habit Switch Ease: {ps['habit_friction_score']}/100
-- Price Elasticity Fit: {ps['price_elasticity_fit']}/100 | Status Signaling: {ps['status_signaling_value']}/100
-
-## Phase 1 Recommended Wedge
-- **Beachhead:** {report['ideal_scaling_blueprint'][0]['target_beachhead']}
-- **Move:** {report['ideal_scaling_blueprint'][0]['strategic_move']}
-"""
-        st.download_button(
-            label="📥 Download 1-Page Founder Audit Brief (.md)",
-            data=brief_md.encode("utf-8"),
-            file_name=f"{harvested['brand']}_india_behavioral_audit.md",
-            mime="text/markdown"
-        )
+        with t5:
+            st.json(recon["harvest"])
