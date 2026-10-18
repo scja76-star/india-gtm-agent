@@ -125,31 +125,43 @@ def run_7_layer_recon(raw_url: str, corridor: str) -> dict:
 
     return {"domain": domain, "brand": brand_slug, "harvest": harvest, "telemetry": telemetry, "region": region_code}
 
-# --- 3. GEMINI 3.8 FLASH FAILOVER ROUTER ---
-MODEL_CHAIN = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"]
+# --- 3. 503/429-PROOF MULTI-CLUSTER ROUTER WITH AUTO-RETRY ---
+MODEL_CHAIN = [
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+    "gemini-3.1-flash-lite",
+]
 
 def execute_final_limit_simulation(client, prompt: str):
     last_err = None
-    for model_name in MODEL_CHAIN:
-        try:
-            res = client.models.generate_content(
-                model=model_name,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    response_schema=FinalLimitGTMReport,
+    # Pass 1 & Pass 2: Try each model cluster; if all are spiking, wait 2s and sweep once more
+    for attempt in range(2):
+        for model_name in MODEL_CHAIN:
+            try:
+                res = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=FinalLimitGTMReport,
+                    )
                 )
-            )
-            return json.loads(res.text), model_name
-        except Exception as e:
-            last_err = e
-            if any(k in str(e) for k in ["429", "RESOURCE_EXHAUSTED", "404", "not found"]):
-                time.sleep(1)
-                continue
-            raise e
-    raise RuntimeError(f"All free model buckets temporarily full. Last error: {last_err}")
+                return json.loads(res.text), model_name
+            except Exception as e:
+                last_err = e
+                err_text = str(e).upper()
+                # Catch 503 (High Demand), 429 (Quota), 500/504 (Server), and 404
+                if any(code in err_text for code in ["503", "UNAVAILABLE", "OVERLOADED", "429", "RESOURCE_EXHAUSTED", "404", "NOT_FOUND", "500", "504"]):
+                    time.sleep(1.2)
+                    continue
+                raise e
+        time.sleep(2)
+    raise RuntimeError(f"Google servers are under heavy load across all 6 models. Wait 15s and click again. Last error: {last_err}")
 
-# --- 4. SESSION STATE & PRE-FIXED API KEY SHIELD ---
+# --- 4. SUPPORTS BOTH 'AIza' AND 'AQ.' KEYS + SIDEBAR OVERRIDE ---
 if "scans_used" not in st.session_state:
     st.session_state.scans_used = 0
 if "last_report" not in st.session_state:
@@ -160,10 +172,14 @@ if "last_recon" not in st.session_state:
 prefixed_key = ""
 vip_code_secret = "YC2026"
 try:
-    prefixed_key = st.secrets.get("GEMINI_API_KEY", "")
-    vip_code_secret = st.secrets.get("VIP_PASSCODE", "YC2026")
+    prefixed_key = str(st.secrets.get("GEMINI_API_KEY", "")).strip().strip('"').strip("'")
+    vip_code_secret = str(st.secrets.get("VIP_PASSCODE", "YC2026")).strip()
 except Exception:
     pass
+
+# Reject accidental placeholder keys from Secrets
+if "YourActual" in prefixed_key or "paste_" in prefixed_key or len(prefixed_key) < 20:
+    prefixed_key = ""
 
 with st.sidebar:
     st.header("⚡ Engine Controls")
@@ -173,18 +189,28 @@ with st.sidebar:
     )
     free_left = max(0, 3 - st.session_state.scans_used)
     st.metric("Free Instant Scans Left", f"{free_left} / 3")
-    with st.expander("🔓 VIP Code / Custom API Key"):
-        vip_input = st.text_input("Enter VIP Code (`YC2026`) or Gemini Key:", type="password")
+
+    # Key Diagnostics Badge so you know immediately if Secrets loaded properly
+    if prefixed_key:
+        st.caption(f"✅ Server Key Loaded (`{prefixed_key[:4]}...{prefixed_key[-4:]}`)")
+    else:
+        st.caption("⚠️ No Server Key in Secrets — Paste key below:")
+
+    with st.expander("🔓 VIP Code / Custom API Key", expanded=not bool(prefixed_key)):
+        vip_input = st.text_input("Enter VIP Code (`YC2026`) or any Gemini API Key:", type="password").strip().strip('"').strip("'")
 
 active_api_key = None
 is_unlimited = False
-if vip_input == vip_code_secret and prefixed_key:
+
+# If user pastes a direct API key (starts with AIza or AQ. or is >25 chars), ALWAYS prioritize it!
+if len(vip_input) > 25 and vip_input != vip_code_secret:
+    active_api_key = vip_input
+    is_unlimited = True
+    st.sidebar.success("Using Custom Pasted API Key!")
+elif vip_input == vip_code_secret and prefixed_key:
     active_api_key = prefixed_key
     is_unlimited = True
     st.sidebar.success("VIP Unlimited Mode Active!")
-elif vip_input.startswith("AIza"):
-    active_api_key = vip_input
-    is_unlimited = True
 elif prefixed_key:
     active_api_key = prefixed_key
 
@@ -204,19 +230,16 @@ target_url = st.text_input("Enter Any Startup URL for 7-Layer Recon & Game-Theor
 
 if st.button("Launch 7-Layer Simulation, Wargame & Intent Radar 🚀"):
     if not active_api_key:
-        st.error("Add GEMINI_API_KEY to `.streamlit/secrets.toml` or paste your key in the sidebar.")
+        st.error("⚠️ No valid API Key found! Either add `GEMINI_API_KEY` in Streamlit Cloud Settings -> Secrets, OR paste your fresh Google AI Studio key directly in the left sidebar box.")
     elif not is_unlimited and st.session_state.scans_used >= 3:
         st.warning("3 free scans used! Enter VIP Code `YC2026` or your own Gemini key in the sidebar.")
     else:
-        if not is_unlimited:
-            st.session_state.scans_used += 1
-
         client = genai.Client(api_key=active_api_key)
         with st.status("Executing 7-Layer Recon + Hiring Intent Miner + Wargame Engine...", expanded=True) as status:
             st.write("1️⃣ Crawling `/`, `/pricing`, & `/security` + deterministic compliance regex...")
             recon = run_7_layer_recon(target_url, corridor)
 
-            st.write(f"2️⃣ Running Behavioral Game-Theory & Wargame Simulation on `gemini-3.8-flash`...")
+            st.write("2️⃣ Running Behavioral Game-Theory & Wargame Simulation...")
             prompt = f"""
             You are an elite Behavioral Economist (Kahneman Prospect Theory, Cialdini Trust Mechanics, Nash Equilibrium Pricing) and Cross-Border Venture Architect.
             Analyze '{recon['domain']}' for the corridor: {corridor}.
@@ -232,7 +255,15 @@ if st.button("Launch 7-Layer Simulation, Wargame & Intent Radar 🚀"):
 
             Be brutally honest, quantitative, and non-obvious. Name real companies, real local competitors, and simulate a realistic 3-round adversarial sales wargame.
             """
-            report, used_model = execute_final_limit_simulation(client, prompt)
+            report, model_or_err = execute_final_limit_simulation(client, prompt)
+
+            if report is None:
+                status.update(label="API Key Rejected by Google", state="error", expanded=True)
+                st.error(f"Google API Response: {model_or_err}\n\n👉 **Instant Fix:** Generate a fresh key at aistudio.google.com/app/apikey and paste it into the left sidebar (or update Streamlit Cloud Secrets).")
+                st.stop()
+
+            if not is_unlimited:
+                st.session_state.scans_used += 1
 
             st.write("3️⃣ Hunting live LinkedIn Decision-Maker URLs in Python (0 LLM quota)...")
             ddgs = DDGS()
@@ -246,7 +277,7 @@ if st.button("Launch 7-Layer Simulation, Wargame & Intent Radar 🚀"):
 
             st.session_state.last_report = report
             st.session_state.last_recon = recon
-            status.update(label=f"Complete via `{used_model}`!", state="complete", expanded=False)
+            status.update(label=f"Complete via `{model_or_err}`!", state="complete", expanded=False)
 
 # --- 5. RENDER INTERACTIVE DASHBOARD ---
 if st.session_state.last_report and st.session_state.last_recon:
